@@ -1,7 +1,7 @@
 import axios from "axios";
 
-const baseUrl =
-  "https://university-of-helsinki-part-03.onrender.com/api/persons";
+
+  const baseUrl = "https://university-of-helsinki-part-03.onrender.com/api/persons";";
 
 const getAll = () => axios.get(baseUrl).then((response) => response.data);
 const create = (newObject) =>
