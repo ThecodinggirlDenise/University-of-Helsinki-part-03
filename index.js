@@ -1,9 +1,47 @@
+require("dotenv").config();
+const mongoose = require("mongoose");
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 
 const app = express();
+app.use(cors());
+app.use(express.json());
 
+console.log("🔍 Connecting to MongoDB...");
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("✅ Connected to MongoDB"))
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err);
+    process.exit(1); // Stop the server if DB connection fails
+  });
+
+const personSchema = new mongoose.Schema({
+  name: String,
+  number: String,
+});
+const Person = mongoose.model("Person", personSchema);
+
+// 🚀 **GET /api/persons - Fetch from MongoDB**
+app.get("/api/persons", async (req, res) => {
+  try {
+    console.log("🔍 Fetching persons from MongoDB...");
+    const persons = await Person.find({});
+    console.log("✅ Persons fetched:", persons);
+    res.json(persons);
+  } catch (error) {
+    console.error("❌ Database fetch error:", error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// ✅ Start Server
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
 // Middleware
 app.use(express.json()); // Parses JSON body
 app.use(cors()); // Enables CORS
@@ -19,19 +57,32 @@ app.use(
   )
 );
 
-// Hardcoded persons list
-let persons = [
-  { id: "1", name: "Arto Hellas", number: "040-123456" },
-  { id: "2", name: "Ada Lovelace", number: "39-44-5323523" },
-  { id: "3", name: "Dan Abramov", number: "12-43-234345" },
-  { id: "4", name: "Mary Poppendieck", number: "39-23-6423122" },
-];
-
-// Route to get all persons
-app.get("/api/persons", (req, res) => {
-  res.json(persons);
+app.get("/api/persons", async (req, res) => {
+  try {
+    const persons = await Person.find({}); // ✅ Fetch from MongoDB
+    res.json(persons);
+  } catch (error) {
+    console.error("❌ Error fetching from MongoDB:", error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
+app.get("/api/persons/:id", async (req, res) => {
+  try {
+    console.log("🔍 Searching for ID:", req.params.id); // Debugging
 
+    const person = await Person.findById(req.params.id);
+
+    if (!person) {
+      console.log("❌ Person not found in DB:", req.params.id);
+      return res.status(404).json({ error: "Person not found" });
+    }
+
+    res.json(person);
+  } catch (error) {
+    console.error("❌ Invalid MongoDB ID format:", error.message);
+    res.status(400).json({ error: "Invalid ID format" });
+  }
+});
 // Info page
 app.get("/info", (req, res) => {
   const time = new Date();
@@ -92,10 +143,4 @@ app.post("/api/persons", (req, res) => {
 // Middleware to handle unknown endpoints
 app.use((req, res) => {
   res.status(404).json({ error: "Unknown endpoint" });
-});
-
-// Start the server
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
 });

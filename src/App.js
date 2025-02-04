@@ -1,82 +1,38 @@
 import { useState, useEffect } from "react";
-import personsService from "./services/persons";
+import personService from "./services/persons";
+import Notification from "./components/Notification";
 
 const App = () => {
   const [persons, setPersons] = useState([]);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [errorMessage, setErrorMessage] = useState(null);
 
-  // Fetch initial data from backend
   useEffect(() => {
-    personsService
-      .getAll()
-      .then((initialPersons) => setPersons(initialPersons));
+    personService.getAll().then((initialPersons) => setPersons(initialPersons));
   }, []);
 
-  // Add new person
   const addPerson = (event) => {
     event.preventDefault();
+    const personObject = { name: newName, number: newNumber };
 
-    if (!newName.trim() || !newNumber.trim()) {
-      alert("❌ Name and number are required!");
-      return;
-    }
-
-    const newPerson = { name: newName.trim(), number: newNumber.trim() };
-
-    console.log("📤 Sending to backend:", newPerson);
-
-    personsService
-      .create(newPerson)
+    personService
+      .create(personObject)
       .then((returnedPerson) => {
         setPersons(persons.concat(returnedPerson));
         setNewName("");
         setNewNumber("");
       })
       .catch((error) => {
-        console.error(
-          "❌ Error adding person:",
-          error.response?.data || error.message
-        );
-        alert(error.response?.data?.error || "An error occurred");
+        setErrorMessage(error.response.data.error);
+        setTimeout(() => setErrorMessage(null), 5000);
       });
   };
-
-  // Delete person
-  const deletePerson = (id) => {
-    if (window.confirm("Do you really want to delete this entry?")) {
-      personsService
-        .remove(id)
-        .then(() => {
-          setPersons(persons.filter((p) => p.id !== id));
-        })
-        .catch((error) => {
-          console.error(
-            "❌ Error deleting person:",
-            error.response?.data || error.message
-          );
-          alert("Error deleting person");
-        });
-    }
-  };
-
-  // Filter persons
-  const filteredPersons = persons.filter((person) =>
-    person.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div>
       <h2>Phonebook</h2>
-      <div>
-        Filter names:{" "}
-        <input
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-      <h3>Add a New Contact</h3>
+      <Notification message={errorMessage} />
       <form onSubmit={addPerson}>
         <div>
           Name:{" "}
@@ -91,11 +47,10 @@ const App = () => {
         </div>
         <button type="submit">Add</button>
       </form>
-      <h3>Numbers</h3>
-      {filteredPersons.map((person) => (
+      <h2>Numbers</h2>
+      {persons.map((person) => (
         <p key={person.id}>
-          {person.name}: {person.number}
-          <button onClick={() => deletePerson(person.id)}>delete</button>
+          {person.name} {person.number}
         </p>
       ))}
     </div>
